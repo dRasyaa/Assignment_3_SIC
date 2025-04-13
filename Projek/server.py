@@ -4,6 +4,9 @@ import io
 from PIL import Image
 import numpy as np
 import tensorflow as tf
+from datetime import datetime
+
+latest_status = {"status": "unknown", "timestamp": "-", "image": None}
 
 # Inisialisasi Flask
 app = Flask(__name__)
