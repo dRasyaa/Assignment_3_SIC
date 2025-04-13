@@ -12,7 +12,7 @@ latest_status = {"status": "unknown", "timestamp": "-", "image": None}
 app = Flask(__name__)
 
 # Load TFLite model
-interpreter = tf.lite.Interpreter(model_path=r"C:\Denivo\Denivo Kren & misterius\MAN IC\SIC\Assignment_3_SIC\Projek\model_jalan.tflite")
+interpreter = tf.lite.Interpreter(model_path="Projek\model_jalan.tflite")
 interpreter.allocate_tensors()
 
 input_details = interpreter.get_input_details()
@@ -51,6 +51,27 @@ def predict():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/distance', methods=['POST'])
+def receive_distance():
+    try:
+        data = request.get_json()
+        distance_front = data.get('front')
+        distance_left = data.get('left')
+        distance_right = data.get('right')
+
+        latest_status["distance"] = {
+            "front": distance_front,
+            "left": distance_left,
+            "right": distance_right
+        }
+        latest_status["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        return jsonify({"message": "Objek Terdeteksi", "data": latest_status["distance"]})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5500)
