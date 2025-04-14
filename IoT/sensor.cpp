@@ -1,0 +1,148 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <esp_now.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+#define TRIG_DEPAN 14
+#define ECHO_DEPAN 27
+#define TRIG_KIRI  12
+#define ECHO_KIRI  13
+#define TRIG_KANAN 33
+#define ECHO_KANAN 32
+
+const char* ssid = "Balai Diklat 2025";
+const char* password = "denivorasya";
+const char* serverURL = "http://172.16.1.71:5500/distance";
+
+// Ganti ke MAC address ESP32 gelang kamu
+uint8_t receiverAddress[] = {0x24, 0x6F, 0x28, 0xAA, 0xBB, 0xCC};
+
+unsigned long lastSendTime = 0;
+const unsigned long sendInterval = 2000;
+
+typedef struct struct_message {
+  float depan;
+  float kiri;
+  float kanan;
+} struct_message;
+
+struct_message dataSensor;
+
+float readDistance(int trigPin, int echoPin) {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  long duration = pulseIn(echoPin, HIGH, 30000);
+  return (duration == 0) ? -1 : duration * 0.034 / 2;
+}
+
+void sendToServer(float depan, float kiri, float kanan) {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(serverURL);
+    http.addHeader("Content-Type", "application/json");
+
+    String jsonPayload = "{";
+    jsonPayload += "\"front\": " + String(depan, 2) + ",";
+    jsonPayload += "\"left\": " + String(kiri, 2) + ",";
+    jsonPayload += "\"right\": " + String(kanan, 2);
+    jsonPayload += "}";
+
+    int httpResponseCode = http.POST(jsonPayload);
+    if (httpResponseCode > 0) {
+      Serial.println("Data sent to server: " + jsonPayload);
+    } else {
+      Serial.println("Send failed. Error: " + String(httpResponseCode));
+    }
+    http.end();
+  } else {
+    Serial.println("WiFi not connected");
+  }
+}
+
+void onSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  Serial.print("ESP-NOW Status: ");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Terkirim" : "Gagal");
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(TRIG_DEPAN, OUTPUT); pinMode(ECHO_DEPAN, INPUT);
+  pinMode(TRIG_KIRI, OUTPUT);  pinMode(ECHO_KIRI, INPUT);
+  pinMode(TRIG_KANAN, OUTPUT); pinMode(ECHO_KANAN, INPUT);
+
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("NeoCane 3 Sensor");
+
+  WiFi.begin(ssid, password);
+  lcd.setCursor(0, 1);
+  lcd.print("WiFi: Connecting...");
+  Serial.print("Connecting to WiFi");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  lcd.setCursor(0, 1);
+  lcd.print("WiFi: Connected   ");
+  Serial.println("\nWiFi connected.");
+  delay(2000);
+  lcd.clear();
+
+  // Init ESP-NOW
+  WiFi.mode(WIFI_STA);  // Harus di mode STA buat ESP-NOW
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW init gagal");
+    return;
+  }
+
+  esp_now_register_send_cb(onSent);
+
+  esp_now_peer_info_t peerInfo = {};
+  memcpy(peerInfo.peer_addr, receiverAddress, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Gagal tambah peer ESP-NOW");
+    return;
+  }
+}
+
+void loop() {
+  float depan = readDistance(TRIG_DEPAN, ECHO_DEPAN);
+  float kiri  = readDistance(TRIG_KIRI, ECHO_KIRI);
+  float kanan = readDistance(TRIG_KANAN, ECHO_KANAN);
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("D:");
+  lcd.print(depan > 0 ? String(depan, 1) + "cm" : "Err");
+  lcd.print(" K:");
+  lcd.print(kiri > 0 ? String(kiri, 1) + "cm" : "Err");
+
+  lcd.setCursor(0, 1);
+  lcd.print("Ka:");
+  lcd.print(kanan > 0 ? String(kanan, 1) + "cm" : "Err");
+
+  if (millis() - lastSendTime >= sendInterval) {
+    dataSensor.depan = depan;
+    dataSensor.kiri = kiri;
+    dataSensor.kanan = kanan;
+
+    esp_now_send(receiverAddress, (uint8_t *)&dataSensor, sizeof(dataSensor));
+    sendToServer(depan, kiri, kanan);
+    lastSendTime = millis();
+  }
+
+  delay(1000);
+}

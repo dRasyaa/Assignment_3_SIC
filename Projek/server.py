@@ -57,6 +57,27 @@ def predict():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/distance', methods=['POST'])
+def receive_distance():
+    try:
+        data = request.get_json()
+        distance_front = data.get('front')
+        distance_left = data.get('left')
+        distance_right = data.get('right')
+
+        latest_status["distance"] = {
+            "front": distance_front,
+            "left": distance_left,
+            "right": distance_right
+        }
+        latest_status["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        return jsonify({"message": "Objek Terdeteksi", "data": latest_status["distance"]})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route('/save-photo', methods=['POST'])
 def save_photo():
