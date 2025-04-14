@@ -5,14 +5,20 @@ from PIL import Image
 import numpy as np
 import tensorflow as tf
 from datetime import datetime
+import os
+import shutil
 
 latest_status = {"status": "unknown", "timestamp": "-", "image": None}
+
+# Folder simpan foto
+PHOTO_FOLDER = "saved_photos"
+os.makedirs(PHOTO_FOLDER, exist_ok=True)
 
 # Inisialisasi Flask
 app = Flask(__name__)
 
 # Load TFLite model
-interpreter = tf.lite.Interpreter(model_path=r"C:\Denivo\Denivo Kren & misterius\MAN IC\SIC\Assignment_3_SIC\Projek\model_jalan.tflite")
+interpreter = tf.lite.Interpreter(model_path="Projek\model_jalan.tflite")
 interpreter.allocate_tensors()
 
 input_details = interpreter.get_input_details()
@@ -48,6 +54,34 @@ def predict():
             status = "aman"
 
         return jsonify({"status": status})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/save-photo', methods=['POST'])
+def save_photo():
+    try:
+        data = request.get_json()
+        if not data or 'image' not in data:
+            return jsonify({"error": "image not found"}), 400
+
+        image_data = data['image']
+        image_bytes = base64.b64decode(image_data)
+
+        # ROTASI FOTO 5 TERAKHIR
+        for i in range(1, 5):  # photo_2 → photo_1, dst.
+            src = os.path.join(PHOTO_FOLDER, f"photo_{i+1}.jpg")
+            dst = os.path.join(PHOTO_FOLDER, f"photo_{i}.jpg")
+            if os.path.exists(src):
+                shutil.move(src, dst)
+
+        # Simpan foto baru sebagai photo_5.jpg
+        new_photo_path = os.path.join(PHOTO_FOLDER, "photo_5.jpg")
+        with open(new_photo_path, "wb") as f:
+            f.write(image_bytes)
+
+        print("✅ Foto disimpan:", new_photo_path)
+        return jsonify({"status": "foto disimpan"})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

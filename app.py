@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import requests
 import time
+import os
+from PIL import Image
 
 # Connect with ubidots
 TOKEN = "BBUS-dUnnmdDGegd40VNGBKuCOnpvAbO9eJ"
@@ -48,9 +50,11 @@ if sensor_values:
     print(sensor_values)
 
 
+
 # Sidebar Menu
 st.sidebar.title("📂 NeoCane Menu")
-menu = st.sidebar.radio("Select View:", ["Home", "Data", "About NeoCane"])
+menu = st.sidebar.radio("Select View:", ["Home", "Data", "📷 Photo History", "About NeoCane"])
+
 
 # Home Page
 if menu == "Home":
@@ -101,6 +105,26 @@ elif menu == "Data":
         st.rerun()
     else:
         st.error("Failed to retrieve data from Ubidots.")
+
+elif menu == "📷 Photo History":
+    st.title("📷 Photo History")
+    st.markdown("Berikut adalah 5 foto terakhir yang diambil oleh ESP32-CAM.")
+
+    if st.button("🔄 Refresh Galeri"):
+        st.rerun() 
+
+    PHOTO_FOLDER = "saved_photos"
+    cols = st.columns(5)
+
+    for i in range(1, 6):
+        path = os.path.join(PHOTO_FOLDER, f"photo_{i}.jpg")
+        if os.path.exists(path):
+            with cols[i - 1]:
+                st.image(Image.open(path), caption=f"photo_{i}.jpg", use_container_width=True)
+        else:
+            with cols[i - 1]:
+                st.warning(f"photo_{i}.jpg not found", icon="⚠️")
+
 
 # About Page
 elif menu == "About NeoCane":
