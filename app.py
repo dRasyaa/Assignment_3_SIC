@@ -1,52 +1,47 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import requests
-import time
 
-# Connect with ubidots
+# Connect with Ubidots
 TOKEN = "BBUS-dUnnmdDGegd40VNGBKuCOnpvAbO9eJ"
 LABEL = "neocane-dashboard"
-
-# Cached Function
-@st.cache_data(ttl=2, show_spinner=False)
 
 # Function to get the data
 def load_sensor_value(token):
     my_headers = {"X-Auth-Token": TOKEN}
 
-    url1 = f"https://industrial.api.ubidots.com/api/v1.6/devices/neocane-dashboard/jarak/lv"
-    url2 = f"https://industrial.api.ubidots.com/api/v1.6/devices/neocane-dashboard/ai_vision/lv"
-    url3 = f"https://industrial.api.ubidots.com/api/v1.6/devices/neocane-dashboard/emergency/lv"
+    url1 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/ai_vision/lv"
+    url2 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/emergency/lv"
+    url3 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/jarak_kanan/lv"
+    url4 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/jarak_kiri/lv"
+    url5 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/jarak_tengah/lv"
 
     try:
-        response_jarak = requests.get(url1, headers=my_headers)
-        response_ai_vision = requests.get(url2, headers=my_headers)
-        response_emergency = requests.get(url3, headers=my_headers)
+        response_ai_vision = requests.get(url1, headers=my_headers)
+        response_emergency = requests.get(url2, headers=my_headers)
+        response_jarak_kanan = requests.get(url3, headers=my_headers)
+        response_jarak_kiri = requests.get(url4, headers=my_headers)
+        response_jarak_tengah = requests.get(url5, headers=my_headers)
         
-        response_jarak.raise_for_status()
         response_ai_vision.raise_for_status()
         response_emergency.raise_for_status()
+        response_jarak_kanan.raise_for_status()
+        response_jarak_kiri.raise_for_status()
+        response_jarak_tengah.raise_for_status()
 
         jarak_value = float(response_jarak.text)
         vision_value = int(response_ai_vision.text)
         emergency_value = int(response_emergency.text)
 
         return {
-            "jarak" : jarak_value,
-            "ai_vision" : vision_value,
-            "emergency" : emergency_value 
+            "jarak": jarak_value,
+            "ai_vision": vision_value,
+            "emergency": emergency_value 
         }
     
     except Exception as e:
-        print(f"Failed to collect the data: {e}")
+        st.error(f"Failed to collect the data: {e}")
         return None
-
-with st.spinner("⏳ Loading real-time sensor data..."):
-    sensor_values = load_sensor_value(TOKEN)
-if sensor_values:
-    print(sensor_values)
-
 
 # Sidebar Menu
 st.sidebar.title("📂 NeoCane Menu")
@@ -59,19 +54,19 @@ if menu == "Home":
 
 # Data Page
 elif menu == "Data":
-    st.title('📊 Real-Time NeoCane Monitoring')
+    st.title("📊 Real-Time NeoCane Monitoring")
 
     if st.button("🔄 Refresh Data"):
-        with st.spinner("Refreshing....."):
-            st.rerun()
-    
+        sensor_values = load_sensor_value(TOKEN)
+        
     if sensor_values:
         tab1, tab2, tab3 = st.tabs(["Object Detection", "AI Vision", "Emergency Log"])
 
         with tab1:
             st.subheader("Object Detection")
-            distance = sensor_values['jarak']
-            delta_value= distance - 50 
+            distance = sensor_values["jarak"]
+            delta_value = distance - 100  
+
             st.metric(
                 label="Distance",
                 value=f"{distance:.2f} cm",
@@ -80,9 +75,20 @@ elif menu == "Data":
                 help="Distance measured by ultrasonic sensor"
             )
 
+            if distance < 100:
+                st.markdown(
+                    "<h4 style='color: red;'>⚠️ DANGER: Too Close!</h4>",
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    "<h4 style='color: green;'>✅ Safe Distance</h4>",
+                    unsafe_allow_html=True
+                )
+
         with tab2:
             st.subheader("AI Vision")
-            ai_status = "Critical Hole" if sensor_values["ai_vision"] == 1 else "Safe"  
+            ai_status = "⚠️ Critical Hole" if sensor_values["ai_vision"] == 1 else "✅ Safe"
             st.metric(
                 label="AI Detection",
                 value=ai_status,
@@ -91,16 +97,14 @@ elif menu == "Data":
 
         with tab3:
             st.subheader("Emergency Button Log")
-            emergency_status = "Active" if sensor_values["emergency"] == 1 else "Inactive"  # 1 means active, 0 means inactive
+            emergency_status = "🚨 Active" if sensor_values["emergency"] == 1 else "✅ Inactive"
             st.metric(
                 label="Emergency Status",
                 value=emergency_status,
                 help="Current state of the emergency button"
             )
-        time.sleep(2)
-        st.rerun()
     else:
-        st.error("Failed to retrieve data from Ubidots.")
+        st.info("Click the refresh button to load sensor data.")
 
 # About Page
 elif menu == "About NeoCane":
@@ -108,7 +112,7 @@ elif menu == "About NeoCane":
     st.markdown("""
     **NeoCane** is an AI & IoT-powered smart cane designed to assist the visually impaired in navigating safely.
     
-    - Equipped with ultrasonic sensors and AI camera
-    - Detects obstacles and road holes
-    - Emergency button & haptic feedback via smart bracelet
+    - Equipped with ultrasonic sensors and AI camera  
+    - Detects obstacles and road holes  
+    - Emergency button & haptic feedback via smart bracelet  
     """)
