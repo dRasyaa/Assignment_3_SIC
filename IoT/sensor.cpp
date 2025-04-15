@@ -16,6 +16,9 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 const char* ssid = "Balai Diklat 2025";
 const char* password = "denivorasya";
 const char* serverURL = "http://172.16.1.71:5500/distance";
+const char* ubidotsToken = "BBUS-dUnnmdDGegd40VNGBKuCOnpvAbO9eJ"; // Ganti token lo di sini
+const char* ubidotsDeviceLabel = "neocane-dashboard"; // Ganti nama device lo di sini
+const char* ubidotsURL = "https://industrial.api.ubidots.com/api/v1.6/devices/"; // URL bawaan Ubidots
 
 // Ganti ke MAC address ESP32 gelang kamu
 uint8_t receiverAddress[] = {0x24, 0x6F, 0x28, 0xAA, 0xBB, 0xCC};
@@ -31,21 +34,68 @@ typedef struct struct_message {
 
 struct_message dataSensor;
 
+bool sensorAktif = true;
+unsigned long lastControlCheck = 0;
+const unsigned long controlCheckInterval = 3000;
+
 float readDistance(int trigPin, int echoPin) {
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
-  long duration = pulseIn(echoPin, HIGH, 30000);
-  return (duration == 0) ? -1 : duration * 0.034 / 2;
+
+  long duration = pulseIn(echoPin, HIGH, 10000); // timeout 10ms (maks ≈ 170cm)
+  if (duration == 0) {
+    Serial.println("pulseIn timeout di echo pin: " + String(echoPin));
+    return -1;
+  }
+
+  float distance = duration * 0.034 / 2;
+  if (distance < 2 || distance > 400) {
+    return -1;
+  }
+
+  return distance;
 }
+
+void checkSensorControl() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    String url = String(ubidotsURL) + ubidotsDeviceLabel + "/sensor_control/lv";
+
+    Serial.println("[Control] Request to: " + url);
+
+    http.setTimeout(2000); // Timeout wajib biar gak hang
+    http.begin(url);
+    http.addHeader("X-Auth-Token", ubidotsToken);
+
+    int httpCode = http.GET();
+
+    if (httpCode > 0) {
+      String payload = http.getString();
+      Serial.println("[Control] Payload: " + payload);
+      float kontrol = payload.toFloat();
+      sensorAktif = kontrol == 1.0;
+      Serial.println("[Control] sensorAktif: " + String(sensorAktif));
+    } else {
+      Serial.println("[Control] Error HTTP: " + String(httpCode));
+    }
+
+    http.end(); // Penting banget biar gak memory leak
+  } else {
+    Serial.println("[Control] WiFi NOT connected");
+  }
+}
+
 
 void sendToServer(float depan, float kiri, float kanan) {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
+    http.setTimeout(2000); // sebelum http.POST
     http.begin(serverURL);
     http.addHeader("Content-Type", "application/json");
+    
 
     String jsonPayload = "{";
     jsonPayload += "\"front\": " + String(depan, 2) + ",";
@@ -98,8 +148,7 @@ void setup() {
   delay(2000);
   lcd.clear();
 
-  // Init ESP-NOW
-  WiFi.mode(WIFI_STA);  // Harus di mode STA buat ESP-NOW
+  WiFi.mode(WIFI_STA);
   if (esp_now_init() != ESP_OK) {
     Serial.println("ESP-NOW init gagal");
     return;
@@ -118,31 +167,95 @@ void setup() {
   }
 }
 
+void sendToUbidots(float depan, float kiri, float kanan) {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+
+    String fullURL = String(ubidotsURL) + ubidotsDeviceLabel;
+    http.setTimeout(2000);
+    http.begin(fullURL);
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("X-Auth-Token", ubidotsToken);
+
+    String jsonPayload = "{";
+    jsonPayload += "\"jarak_tengah\": " + String(depan, 2) + ",";
+    jsonPayload += "\"jarak_kiri\": " + String(kiri, 2) + ",";
+    jsonPayload += "\"jarak_kanan\": " + String(kanan, 2);
+    jsonPayload += "}";
+
+    Serial.println("[Ubidots] Kirim: " + jsonPayload);
+
+    int httpResponseCode = http.POST(jsonPayload);
+
+    if (httpResponseCode > 0) {
+      Serial.println("[Ubidots] OK: " + String(httpResponseCode));
+    } else {
+      Serial.println("[Ubidots] Gagal, Error: " + String(httpResponseCode));
+    }
+
+    http.end();
+  } else {
+    Serial.println("[Ubidots] WiFi belum nyambung");
+  }
+}
+
+unsigned long lastSensorRead = 0;
+unsigned long sensorInterval = 500;
+
+unsigned long lastUbidotsSend = 0;
+unsigned long ubidotsInterval = 5000;
+
+float depan = -1, kiri = -1, kanan = -1;
+
 void loop() {
-  float depan = readDistance(TRIG_DEPAN, ECHO_DEPAN);
-  float kiri  = readDistance(TRIG_KIRI, ECHO_KIRI);
-  float kanan = readDistance(TRIG_KANAN, ECHO_KANAN);
+  unsigned long now = millis();
 
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("D:");
-  lcd.print(depan > 0 ? String(depan, 1) + "cm" : "Err");
-  lcd.print(" K:");
-  lcd.print(kiri > 0 ? String(kiri, 1) + "cm" : "Err");
-
-  lcd.setCursor(0, 1);
-  lcd.print("Ka:");
-  lcd.print(kanan > 0 ? String(kanan, 1) + "cm" : "Err");
-
-  if (millis() - lastSendTime >= sendInterval) {
-    dataSensor.depan = depan;
-    dataSensor.kiri = kiri;
-    dataSensor.kanan = kanan;
-
-    esp_now_send(receiverAddress, (uint8_t *)&dataSensor, sizeof(dataSensor));
-    sendToServer(depan, kiri, kanan);
-    lastSendTime = millis();
+  if (now - lastControlCheck >= controlCheckInterval) {
+  checkSensorControl();
+  lastControlCheck = now;
   }
 
-  delay(1000);
+  if (sensorAktif) {
+    if (now - lastSensorRead >= sensorInterval) {
+      depan = readDistance(TRIG_DEPAN, ECHO_DEPAN);
+      delay(30);
+      kiri  = readDistance(TRIG_KIRI, ECHO_KIRI);
+      delay(30);
+      kanan = readDistance(TRIG_KANAN, ECHO_KANAN);
+
+      Serial.print("Depan: "); Serial.print(depan);
+      Serial.print(" | Kiri: "); Serial.print(kiri);
+      Serial.print(" | Kanan: "); Serial.println(kanan);
+
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("D:");
+      lcd.print(depan > 0 ? String(depan, 1) + "cm" : "Err");
+      lcd.print(" K:");
+      lcd.print(kiri > 0 ? String(kiri, 1) + "cm" : "Err");
+
+      lcd.setCursor(0, 1);
+      lcd.print("Ka:");
+      lcd.print(kanan > 0 ? String(kanan, 1) + "cm" : "Err");
+
+      dataSensor.depan = depan;
+      dataSensor.kiri = kiri;
+      dataSensor.kanan = kanan;
+
+      esp_now_send(receiverAddress, (uint8_t *)&dataSensor, sizeof(dataSensor));
+
+      lastSensorRead = now;
+    }
+
+    if (now - lastUbidotsSend >= ubidotsInterval) {
+      sendToServer(depan, kiri, kanan);
+      sendToUbidots(depan, kiri, kanan);
+      lastUbidotsSend = now;
+    }
+
+  } else {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Sensor: NON-AKTIF");
+  }
 }
