@@ -7,9 +7,10 @@
 // =========================
 // Konfigurasi WiFi & Server
 // =========================
-const char* ssid = "Hidden";
+const char* ssid = "Balai Diklat 2025";
 const char* password = "denivorasya";
 const char* serverURL = "http://192.168.74.12:5500/predict";
+const char* serverSave = "http://192.168.74.12:5500/save-photo";
 
 // ==========================
 // Konfigurasi Kamera AI Thinker ESP32-CAM
@@ -145,6 +146,28 @@ void loop() {
       Serial.println(httpResponseCode);
     }
     http.end();
+
+    // ====================
+    // Kirim ke /save-photo
+    // ====================
+    HTTPClient http_photo;
+    http_photo.begin(serverSave);
+    http_photo.addHeader("Content-Type", "application/json");
+
+    String payload_save = "{\"image\":\"" + image_base64 + "\"}";
+    Serial.println("Mengirim foto ke /save-photo...");
+    int photoResponseCode = http_photo.POST(payload_save);
+
+    if (photoResponseCode > 0) {
+      Serial.println("✅ Foto berhasil dikirim ke /save-photo");
+    } else {
+      Serial.print("❌ Gagal kirim foto: ");
+      Serial.println(photoResponseCode);
+    }
+
+    http_photo.end();
+
+
   } else {
     Serial.println("❌ Tidak terhubung ke WiFi.");
   }
