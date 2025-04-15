@@ -15,21 +15,29 @@ def load_sensor_value(token):
     url3 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/jarak_kanan/lv"
     url4 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/jarak_kiri/lv"
     url5 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/jarak_tengah/lv"
+    url6 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/ai_vision/lv"
+
     try:
         response_jarak_kanan = requests.get(url3, headers=my_headers)
         response_jarak_kiri = requests.get(url4, headers=my_headers)
         response_jarak_tengah = requests.get(url5, headers=my_headers)
+        response_ai_vision = requests.get(url6, headers=my_headers)
  
         response_jarak_kiri.raise_for_status()
         response_jarak_tengah.raise_for_status()
+        response_ai_vision.raise_for_status()
  
         jarak_kanan = float(response_jarak_kanan.text)
         jarak_tengah = float(response_jarak_tengah.text)
         jarak_kiri = float(response_jarak_kiri.text)
+        ai_vision = int(float(response_ai_vision.text))
+
+        
         return {
             "jarak_kanan": jarak_kanan,
             "jarak_tengah": jarak_tengah,
-            "jarak_kiri": jarak_kiri
+            "jarak_kiri": jarak_kiri,
+            "ai_vision": ai_vision
         }
     except Exception as e:
         st.error(f"Failed to collect the data: {e}")
@@ -68,6 +76,9 @@ elif menu == "Data":
  
         with tab1:
             st.subheader("Object Detection")
+            if st.button("🧱 Refresh Deteksi"):
+                st.rerun()
+
             right_distance = sensor_values["jarak_kanan"]
             middle_distance = sensor_values["jarak_tengah"]
             left_distance = sensor_values["jarak_kiri"]
@@ -87,7 +98,16 @@ elif menu == "Data":
                 st.markdown(status_r, unsafe_allow_html=True)
  
         with tab2: 
-            st.subheader("Ai Vision")
+            st.subheader("AI Vision")
+
+            if st.button("🤖 Refresh AI Vision"):
+                st.rerun() 
+
+            if sensor_values["ai_vision"] == 1:
+                st.error("🚧 Jalan rusak terdeteksi! Harap hati-hati.")
+            else:
+                st.success("✅ Jalan aman.")
+            
         
         with tab3:
             st.subheader("📷 Photo History")

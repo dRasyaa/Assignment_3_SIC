@@ -7,6 +7,7 @@ import tensorflow as tf
 from datetime import datetime
 import os
 import shutil
+import requests
 
 latest_status = {"status": "unknown", "timestamp": "-", "image": None}
 
@@ -27,6 +28,24 @@ output_details = interpreter.get_output_details()
 # Ukuran input model
 target_size = input_details[0]['shape'][1:3]  # e.g. (128, 128)
 
+# Fungsi kirim ke Ubidots
+def send_to_ubidots(status):
+    token = "BBUS-dUnnmdDGegd40VNGBKuCOnpvAbO9eJ"
+    device = "neocane-dashboard"
+    variable = "ai_vision"
+    value = 1 if status == "jalan rusak" else 0
+
+    url = f"https://industrial.api.ubidots.com/api/v1.6/devices/{device}/{variable}/values"
+    headers = {"X-Auth-Token": token, "Content-Type": "application/json"}
+    payload = {"value": value}
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        print(f"✅ Data status '{status}' dikirim ke Ubidots: {response.status_code}")
+    except Exception as e:
+        print(f"❌ Gagal kirim ke Ubidots: {e}")
+
+# Fungsi preprocessing gambar
 def preprocess_image(img_base64):
     img_data = base64.b64decode(img_base64)
     img = Image.open(io.BytesIO(img_data)).convert('RGB')
@@ -52,6 +71,8 @@ def predict():
             status = "jalan rusak"
         else:
             status = "aman"
+
+        send_to_ubidots(status) 
 
         return jsonify({"status": status})
 
