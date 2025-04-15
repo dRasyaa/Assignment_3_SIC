@@ -16,11 +16,10 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 const char* ssid = "Balai Diklat 2025";
 const char* password = "denivorasya";
 const char* serverURL = "http://172.16.1.71:5500/distance";
-const char* ubidotsToken = "BBUS-dUnnmdDGegd40VNGBKuCOnpvAbO9eJ"; // Ganti token lo di sini
-const char* ubidotsDeviceLabel = "neocane-dashboard"; // Ganti nama device lo di sini
-const char* ubidotsURL = "https://industrial.api.ubidots.com/api/v1.6/devices/"; // URL bawaan Ubidots
+const char* ubidotsToken = "BBUS-dUnnmdDGegd40VNGBKuCOnpvAbO9eJ"; 
+const char* ubidotsDeviceLabel = "neocane-dashboard"; 
+const char* ubidotsURL = "https://industrial.api.ubidots.com/api/v1.6/devices/"; 
 
-// Ganti ke MAC address ESP32 gelang kamu
 uint8_t receiverAddress[] = {0x24, 0x6F, 0x28, 0xAA, 0xBB, 0xCC};
 
 unsigned long lastSendTime = 0;
@@ -45,7 +44,7 @@ float readDistance(int trigPin, int echoPin) {
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
 
-  long duration = pulseIn(echoPin, HIGH, 10000); // timeout 10ms (maks ≈ 170cm)
+  long duration = pulseIn(echoPin, HIGH, 10000); 
   if (duration == 0) {
     Serial.println("pulseIn timeout di echo pin: " + String(echoPin));
     return -1;
@@ -66,7 +65,7 @@ void checkSensorControl() {
 
     Serial.println("[Control] Request to: " + url);
 
-    http.setTimeout(2000); // Timeout wajib biar gak hang
+    http.setTimeout(2000); 
     http.begin(url);
     http.addHeader("X-Auth-Token", ubidotsToken);
 
@@ -82,7 +81,7 @@ void checkSensorControl() {
       Serial.println("[Control] Error HTTP: " + String(httpCode));
     }
 
-    http.end(); // Penting banget biar gak memory leak
+    http.end(); 
   } else {
     Serial.println("[Control] WiFi NOT connected");
   }
@@ -92,7 +91,7 @@ void checkSensorControl() {
 void sendToServer(float depan, float kiri, float kanan) {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    http.setTimeout(2000); // sebelum http.POST
+    http.setTimeout(2000); 
     http.begin(serverURL);
     http.addHeader("Content-Type", "application/json");
     
