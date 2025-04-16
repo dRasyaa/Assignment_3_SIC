@@ -17,7 +17,7 @@ const char* serverSave = "http://192.168.74.12:5500/save-photo";
 // =========================
 // ESP-NOW Receiver (Gelang) MAC Address
 // =========================
-uint8_t receiverMAC[] = {0xF8, 0xB3, 0xB7, 0x7B, 0xDD, 0xD8}; // GANTI MAC INI
+uint8_t receiverMAC[] = {0xF8, 0xB3, 0xB7, 0x7B, 0xDD, 0xD8};
 
 // ==========================
 // Kamera AI Thinker
