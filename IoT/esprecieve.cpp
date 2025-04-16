@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <HardwareSerial.h>
 #include <DFRobotDFPlayerMini.h>
+#include <esp_wifi.h>
   
 // Struct data dari pengirim (sensor jarak)
 typedef struct struct_message {
@@ -20,7 +21,7 @@ DFRobotDFPlayerMini player;
 
 // Callback ESP-NOW
 void onReceiveData(const esp_now_recv_info_t *recvInfo, const uint8_t *incomingData, int len) {
- 
+  // Tambahkan ini buat nampilin MAC Address si pengirim
   char macStr[18];
   snprintf(macStr, sizeof(macStr),
            "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -42,16 +43,20 @@ void onReceiveData(const esp_now_recv_info_t *recvInfo, const uint8_t *incomingD
     Serial.print(dataSensor.kanan);
     Serial.println(" cm");
   } else {
+    // String seperti "rusak"
     String msg = "";
     for (int i = 0; i < len; i++) {
       msg += (char)incomingData[i];
     }
+
+    msg.trim();
     Serial.print("📩 Pesan string diterima: ");
     Serial.println(msg);
 
-    if (msg == "rusak") {
-      Serial.println("🚨 Jalan rusak terdeteksi! Mainkan suara DFPlayer...");
+    if (msg.equalsIgnoreCase("rusak")) {
+      Serial.println("🚨 Jalan rusak terdeteksi! Memainkan suara DFPlayer...");
       player.play(1);
+      delay(3000);
     }
   }
 }
@@ -61,6 +66,11 @@ void setup() {
   Serial.begin(115200);
   Serial.println("ESP-NOW Receiver siap...");
   WiFi.mode(WIFI_STA);  
+
+  int wifi_channel = 6; 
+  esp_wifi_set_promiscuous(true);
+  esp_wifi_set_channel(wifi_channel, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_promiscuous(false);
   delay(50);           
   Serial.print("📡 MAC Address ESP32 Gelang: ");
   Serial.println(WiFi.macAddress());  
@@ -83,5 +93,5 @@ void setup() {
 }
 
 void loop() {
-  
+  // Kosong, semua berjalan via callback
 }

@@ -4,6 +4,7 @@
 #include "esp_camera.h"
 #include "base64.h"
 #include <esp_now.h>
+#include <esp_wifi.h> 
 
 // =========================
 // WiFi & Server Config
@@ -106,6 +107,14 @@ void setup() {
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
 
+  Serial.print("📡 ESP32-CAM pakai WiFi channel: ");
+  Serial.println(WiFi.channel());
+
+  int wifi_channel = WiFi.channel();
+  esp_wifi_set_promiscuous(true);
+  esp_wifi_set_channel(wifi_channel, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_promiscuous(false);
+
   initESPNOW();
 }
 
@@ -133,6 +142,22 @@ void loop(){
       String response = http.getString();
       Serial.print("✅ Response dari /predict: ");
       Serial.println(response);
+
+      // ✅ Kirim "rusak" via ESP-NOW kalau jalan rusak
+      if (response.indexOf("jalan rusak") >= 0) {
+        Serial.println("🚨 Kirim sinyal 'rusak' ke gelang via ESP-NOW");
+        const char *pesan = "rusak";
+        esp_err_t result = esp_now_send(receiverMAC, (uint8_t *)pesan, strlen(pesan));
+        if (result == ESP_OK) {
+          Serial.println("✅ Sinyal 'rusak' berhasil dikirim!");
+        } else {
+          Serial.println("❌ Gagal kirim sinyal 'rusak'");
+        }
+      }
+
+    } else {
+      Serial.print("❌ HTTP /predict error: ");
+      Serial.println(httpResponseCode);
     }
     http.end();
 
@@ -157,5 +182,6 @@ void loop(){
     http_photo.end();
 
     delay(5000);
-  } 
+  }
+   
 }
