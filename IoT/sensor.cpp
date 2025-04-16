@@ -21,7 +21,7 @@ const char* ubidotsDeviceLabel = "neocane-dashboard"; // Ganti nama device lo di
 const char* ubidotsURL = "https://industrial.api.ubidots.com/api/v1.6/devices/"; // URL bawaan Ubidots
 
 // Ganti ke MAC address ESP32 gelang kamu
-uint8_t receiverAddress[] = {0x24, 0x6F, 0x28, 0xAA, 0xBB, 0xCC};
+uint8_t receiverAddress[] = {0xF8, 0xB3, 0xB7, 0x7B, 0xDD, 0xD8} ;
 
 unsigned long lastSendTime = 0;
 const unsigned long sendInterval = 2000;
@@ -30,6 +30,7 @@ typedef struct struct_message {
   float depan;
   float kiri;
   float kanan;
+  bool bahaya; // Menambahkan status bahaya
 } struct_message;
 
 struct_message dataSensor;
@@ -87,7 +88,6 @@ void checkSensorControl() {
     Serial.println("[Control] WiFi NOT connected");
   }
 }
-
 
 void sendToServer(float depan, float kiri, float kanan) {
   if (WiFi.status() == WL_CONNECTED) {
@@ -211,8 +211,8 @@ void loop() {
   unsigned long now = millis();
 
   if (now - lastControlCheck >= controlCheckInterval) {
-  checkSensorControl();
-  lastControlCheck = now;
+    checkSensorControl();
+    lastControlCheck = now;
   }
 
   if (sensorAktif) {
@@ -226,6 +226,13 @@ void loop() {
       Serial.print("Depan: "); Serial.print(depan);
       Serial.print(" | Kiri: "); Serial.print(kiri);
       Serial.print(" | Kanan: "); Serial.println(kanan);
+
+      // Pengecekan jarak depan dan kirimkan sinyal bahaya jika perlu
+      if (depan <= 50 && depan > 0) {
+        dataSensor.bahaya = true; // Sinyal bahaya
+      } else {
+        dataSensor.bahaya = false;
+      }
 
       lcd.clear();
       lcd.setCursor(0, 0);
