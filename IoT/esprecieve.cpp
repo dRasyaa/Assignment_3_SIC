@@ -9,6 +9,7 @@ typedef struct struct_message {
   float depan;
   float kiri;
   float kanan;
+  bool bahaya; // Menambahkan status bahaya
 } struct_message;
 
 struct_message dataSensor;
@@ -42,6 +43,14 @@ void onReceiveData(const esp_now_recv_info_t *recvInfo, const uint8_t *incomingD
     Serial.print(" cm | Kanan: ");
     Serial.print(dataSensor.kanan);
     Serial.println(" cm");
+
+    // 🔥 Tambahin bagian ini:
+    if (dataSensor.bahaya) {
+      Serial.println("🚨 BAHAYA TERDETEKSI! Memainkan suara peringatan...");
+      player.play(2);  // Mainkan file kedua di SD Card, pastikan file bernama 002.mp3
+      delay(3000);     // Delay agar gak spam suara
+    }
+
   } else {
     // String seperti "rusak"
     String msg = "";
@@ -60,6 +69,7 @@ void onReceiveData(const esp_now_recv_info_t *recvInfo, const uint8_t *incomingD
     }
   }
 }
+
 
 
 void setup() {
