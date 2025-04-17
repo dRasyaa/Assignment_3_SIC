@@ -227,8 +227,8 @@ void loop() {
       Serial.print(" | Kiri: "); Serial.print(kiri);
       Serial.print(" | Kanan: "); Serial.println(kanan);
 
-      // Pengecekan jarak depan dan kirimkan sinyal bahaya jika perlu
-      if (depan <= 50 && depan > 0) {
+      // Pengecekan jarak depan, kiri, dan kanan untuk mengaktifkan bahaya jika < 100 cm
+      if ((depan <= 100 && depan > 0) || (kiri <= 100 && kiri > 0) || (kanan <= 100 && kanan > 0)) {
         dataSensor.bahaya = true; // Sinyal bahaya
       } else {
         dataSensor.bahaya = false;
@@ -266,3 +266,4 @@ void loop() {
     lcd.print("Sensor: NON-AKTIF");
   }
 }
+
