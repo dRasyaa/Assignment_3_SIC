@@ -11,8 +11,8 @@
 // =========================
 const char* ssid = "Balai Diklat 2025";
 const char* password = "denivorasya";
-const char* serverURL = "http://192.168.74.12:5500/predict";
-const char* serverSave = "http://192.168.74.12:5500/save-photo";
+const char* serverURL = "http://192.168.234.11:5500/predict";
+const char* serverSave = "http://192.168.234.11:5500/save-photo";
 
 // =========================
 // ESP-NOW Receiver (Gelang) MAC Address
