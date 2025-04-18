@@ -390,7 +390,7 @@ elif menu == "👉 About Us":
  
         with col1:
             try:
-                image = f"https://raw.githubusercontent.com/denivorasya/neocane-dashboard/main/photo_member/{member['photo']}"
+                image = f"https://raw.githubusercontent.com/dRasyaa/Assignment_3_SIC/refs/heads/main/photo_member/{member['photo']}"
                 st.image(image, width=200) 
             except:
                 st.warning("Foto tidak ditemukan")
