@@ -44,7 +44,15 @@ def load_sensor_value(token):
 # Inisialisasi session_state buat sensor values
 if "sensor_values" not in st.session_state:
     st.session_state.sensor_values = load_sensor_value(TOKEN)
- 
+
+st.set_page_config(
+    page_title="NeoCane Dashboard",     
+    page_icon="🦯",                       
+    layout="wide",                        
+    initial_sidebar_state="auto",         
+)
+
+
 # Sidebar Menu
 st.sidebar.title("📂 NeoCane Menu")
 menu = st.sidebar.radio("Select View:", ["🏠 Home", "📊 Data", "ℹ️ About NeoCane", "👉 About Us"])
