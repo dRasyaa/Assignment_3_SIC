@@ -339,22 +339,22 @@ elif menu == "👉 About Us":
     # Mendefinisikan anggota tim
     team_members = {
     "Anakya Danke Cetta Akhbar": {
-        "photo": "photo_member\Anakya.jpg",
+        "photo": "https://raw.githubusercontent.com/denivorasya/neocane-dashboard/main/photo_member/Anakya.jpg",
         "job": "Sketch & Smart Wirstband",
         "quote": "Teknologi terbaik adalah yang mampu menyatukan manusia. -Matt Mullenweg"
     },
     "Bilal Khawarizmi": {
-        "photo": "photo_member\Bilal.jpg", 
+        "photo": "https://raw.githubusercontent.com/denivorasya/neocane-dashboard/main/photo_member/Bilal.jpg", 
         "job": "Streamlit & Ubidots Platform",
         "quote": "Di tengah kesulitan, selalu ada peluang. -Albert Einstein"
     },
     "Denivo Rasya Abiyyu": {
-        "photo": "photo_member\Denivo.jpg",
+        "photo": "https://raw.githubusercontent.com/denivorasya/neocane-dashboard/main/photo_member/Denivo.jpg",
         "job": "Ai Vision & Obstacle Classification",
         "quote": "Kekuatan terbesar dari teknologi adalah ketika ia digunakan untuk memanusiakan manusia. -B.J Habibie"
     },
     "Rhaka Reza Rayvaldi": {
-        "photo": "photo_member\Rhaka.jpg",
+        "photo": "https://raw.githubusercontent.com/denivorasya/neocane-dashboard/main/photo_member/Rhaka.jpg",
         "job": "Sensor & Cane Equipment",
         "quote": "Inovasi adalah kemampuan melihat apa yang dilihat semua orang, tapi berpikir dengan cara yang berbeda. -Albert Szent-Györgyi"
     }
@@ -390,8 +390,8 @@ elif menu == "👉 About Us":
  
         with col1:
             try:
-                image = Image.open(member["photo"])
-                st.image(image, width=200)
+                image = f"https://raw.githubusercontent.com/denivorasya/neocane-dashboard/main/photo_member/{member['photo']}"
+                st.image(image, width=200) 
             except:
                 st.warning("Foto tidak ditemukan")
  
