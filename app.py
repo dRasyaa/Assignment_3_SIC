@@ -339,22 +339,22 @@ elif menu == "👉 About Us":
     # Mendefinisikan anggota tim
     team_members = {
     "Anakya Danke Cetta Akhbar": {
-        "photo": "https://raw.githubusercontent.com/denivorasya/neocane-dashboard/main/photo_member/Anakya.jpg",
+        "photo": "Anakya.jpg",
         "job": "Sketch & Smart Wirstband",
         "quote": "Teknologi terbaik adalah yang mampu menyatukan manusia. -Matt Mullenweg"
     },
     "Bilal Khawarizmi": {
-        "photo": "https://raw.githubusercontent.com/denivorasya/neocane-dashboard/main/photo_member/Bilal.jpg", 
+        "photo": "Bilal.jpg", 
         "job": "Streamlit & Ubidots Platform",
         "quote": "Di tengah kesulitan, selalu ada peluang. -Albert Einstein"
     },
     "Denivo Rasya Abiyyu": {
-        "photo": "https://raw.githubusercontent.com/denivorasya/neocane-dashboard/main/photo_member/Denivo.jpg",
+        "photo": "Denivo.jpg",
         "job": "Ai Vision & Obstacle Classification",
         "quote": "Kekuatan terbesar dari teknologi adalah ketika ia digunakan untuk memanusiakan manusia. -B.J Habibie"
     },
     "Rhaka Reza Rayvaldi": {
-        "photo": "https://raw.githubusercontent.com/denivorasya/neocane-dashboard/main/photo_member/Rhaka.jpg",
+        "photo": "Rhaka.jpg",
         "job": "Sensor & Cane Equipment",
         "quote": "Inovasi adalah kemampuan melihat apa yang dilihat semua orang, tapi berpikir dengan cara yang berbeda. -Albert Szent-Györgyi"
     }
