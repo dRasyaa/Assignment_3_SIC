@@ -18,6 +18,7 @@ os.makedirs(PHOTO_FOLDER, exist_ok=True)
 # Inisialisasi Flask
 app = Flask(__name__)
 
+
 # Load TFLite model
 interpreter = tf.lite.Interpreter(model_path="Projek\model_jalan.tflite")
 interpreter.allocate_tensors()
