@@ -112,7 +112,7 @@ def save_photo():
         image_bytes = base64.b64decode(image_data)
 
         # ROTASI FOTO 5 TERAKHIR
-        for i in range(1, 5):  # photo_2 → photo_1, dst.
+        for i in range(1, 5): 
             src = os.path.join(PHOTO_FOLDER, f"photo_{i+1}.jpg")
             dst = os.path.join(PHOTO_FOLDER, f"photo_{i}.jpg")
             if os.path.exists(src):
@@ -128,6 +128,18 @@ def save_photo():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+latest_emergency = {"triggered": False}
+
+@app.route("/emergency", methods=["POST"])
+def handle_emergency():
+    data = request.get_json()
+    if data.get("emergency"):
+        latest_emergency["triggered"] = True
+        print("🚨 Emergency button ditekan!")
+        return jsonify({"status": "received"})
+    return jsonify({"error": "Invalid data"}), 400
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5500)
