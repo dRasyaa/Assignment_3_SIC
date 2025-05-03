@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <HardwareSerial.h>
 #include <DFRobotDFPlayerMini.h>
+<<<<<<< Updated upstream
 #include <esp_wifi.h>
  
 // Struct data dari pengirim (sensor jarak)
@@ -15,6 +16,36 @@ typedef struct struct_message {
 struct_message dataSensor;
  
 // DFPlayer setup
+=======
+#include <HTTPClient.h>
+
+
+// ----- Config -----
+constexpr int WIFI_CHANNEL          = 6;
+constexpr uint8_t DFPLAYER_RX_PIN   = 16;
+constexpr uint8_t DFPLAYER_TX_PIN   = 17;
+constexpr uint8_t DFPLAYER_VOLUME   = 25;
+constexpr uint8_t BUTTON_PIN = 4;
+
+constexpr uint8_t SOUND_ALERT       = 3;
+constexpr uint8_t SOUND_ROAD_DAMAGE = 2;
+constexpr uint8_t SOUND_FAMILY      = 4;
+
+const char*EMERGENCY_URL = "http://192.168.155.11:5500/emergency";
+
+unsigned long lastButtonCheck = 0;
+const unsigned long BUTTON_CHECK_INTERVAL = 5000;
+
+// ----- Data Struct -----
+struct SensorData {
+  float depan, kiri, kanan;
+  bool  bahaya;
+};
+
+SensorData dataSensor;
+
+// ----- DFPlayer -----
+>>>>>>> Stashed changes
 HardwareSerial dfSerial(1);
 #define RXD 17
 #define TXD 16
@@ -70,10 +101,37 @@ void onReceiveData(const esp_now_recv_info_t *recvInfo, const uint8_t *incomingD
  
 void setup() {
   Serial.begin(115200);
+<<<<<<< Updated upstream
   Serial.println("ESP-NOW Receiver siap...");
   WiFi.mode(WIFI_STA);  
  
   int wifi_channel = 6; 
+=======
+  Serial.println("🔄 Starting...");
+
+  initWiFi();
+  initESPNOW();
+  initDFPlayer();
+  pinMode(BUTTON_PIN, INPUT_PULLUP); 
+
+  Serial.println("🚀 System Ready!");
+}
+
+void loop() {
+  unsigned long now = millis(); 
+  if (now - lastButtonCheck >= BUTTON_CHECK_INTERVAL) {
+    lastButtonCheck = now;
+    if (digitalRead(BUTTON_PIN) == LOW) {
+      Serial.println("🆘 Emergency button pressed!");
+      sendEmergencyToServer();
+    }
+  }
+}
+
+// ----- Initializations -----
+void initWiFi() {
+  WiFi.mode(WIFI_STA);
+>>>>>>> Stashed changes
   esp_wifi_set_promiscuous(true);
   esp_wifi_set_channel(wifi_channel, WIFI_SECOND_CHAN_NONE);
   esp_wifi_set_promiscuous(false);
@@ -97,6 +155,28 @@ void setup() {
     player.volume(25);
   }
 }
+<<<<<<< Updated upstream
  
 void loop() {
+=======
+
+void sendEmergencyToServer() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(EMERGENCY_URL);
+    http.addHeader("Content-Type", "application/json");
+    
+    String json = "{\"emergency\": true}";
+    int resCode = http.POST(json);
+
+    if (resCode > 0) {
+      Serial.printf("✅ Emergency sent! Code: %d\n", resCode);
+    } else {
+      Serial.printf("❌ Failed to send emergency! Code: %d\n", resCode);
+    }
+    http.end();
+  } else {
+    Serial.println("❌ WiFi not connected!");
+  }
+>>>>>>> Stashed changes
 }
