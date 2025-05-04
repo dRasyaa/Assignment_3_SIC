@@ -1,4 +1,5 @@
 #include <esp_now.h>
+#include <esp_wifi.h>
 #include <WiFi.h>
 #include <HardwareSerial.h>
 #include <DFRobotDFPlayerMini.h>
@@ -31,58 +32,17 @@ SensorData dataSensor;
 
 // ----- DFPlayer -----
 HardwareSerial dfSerial(1);
-#define RXD 17
-#define TXD 16
 DFRobotDFPlayerMini player;
- 
-// Callback ESP-NOW
-void onReceiveData(const esp_now_recv_info_t *recvInfo, const uint8_t *incomingData, int len) {
-  char macStr[18];
-  snprintf(macStr, sizeof(macStr),
-           "%02X:%02X:%02X:%02X:%02X:%02X",
-           recvInfo->src_addr[0], recvInfo->src_addr[1], recvInfo->src_addr[2],
-           recvInfo->src_addr[3], recvInfo->src_addr[4], recvInfo->src_addr[5]);
- 
-  Serial.print("📡 Data diterima dari: ");
-  Serial.println(macStr);
- 
-  if (len == sizeof(struct_message)) {
-    memcpy(&dataSensor, incomingData, sizeof(dataSensor));
-    Serial.println("✅ Data SENSOR diterima via ESP-NOW:");
-    Serial.print("  Depan: ");
-    Serial.print(dataSensor.depan);
-    Serial.print(" cm | Kiri: ");
-    Serial.print(dataSensor.kiri);
-    Serial.print(" cm | Kanan: ");
-    Serial.print(dataSensor.kanan);
-    Serial.println(" cm");
- 
-    if (dataSensor.bahaya) {
-      Serial.println("🚨 BAHAYA TERDETEKSI! Memainkan suara peringatan...");
-      player.play(2);  
-      delay(3000);     
-    }
- 
-  } else {
-    String msg = "";
-    for (int i = 0; i < len; i++) {
-      msg += (char)incomingData[i];
-    }
- 
-    msg.trim();
-    Serial.print("📩 Pesan string diterima: ");
-    Serial.println(msg);
- 
-    if (msg.equalsIgnoreCase("rusak")) {
-      Serial.println("🚨 Jalan rusak terdeteksi! Memainkan suara DFPlayer...");
-      player.play(1);
-      delay(3000);
-    }
-  }
-}
- 
- 
- 
+
+// ----- Prototypes -----
+void initWiFi();
+void initESPNOW();
+void initDFPlayer();
+void onReceiveData(const esp_now_recv_info_t*, const uint8_t*, int);
+void handleSensorData();
+void handleStringMessage(const String&);
+
+// ----- Setup & Loop -----
 void setup() {
   Serial.begin(115200);
   Serial.println("🔄 Starting...");
@@ -110,26 +70,72 @@ void loop() {
 void initWiFi() {
   WiFi.mode(WIFI_STA);
   esp_wifi_set_promiscuous(true);
-  esp_wifi_set_channel(wifi_channel, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_channel(WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
   esp_wifi_set_promiscuous(false);
-  delay(50);           
-  Serial.print("📡 MAC Address ESP32 Gelang: ");
-  Serial.println(WiFi.macAddress());  
- 
-  // ESP-NOW init
+  delay(50);
+  Serial.printf("📡 MAC: %s\n", WiFi.macAddress().c_str());
+}
+
+void initESPNOW() {
   if (esp_now_init() != ESP_OK) {
-    Serial.println("❌ ESP-NOW init gagal");
-    return; 
+    Serial.println("❌ ESP-NOW init failed");
+    return;
   }
   esp_now_register_recv_cb(onReceiveData);
- 
- // DFPlayer Mini init pakai HardwareSerial
-  dfSerial.begin(9600, SERIAL_8N1, RXD, TXD);
+  Serial.println("✅ ESP-NOW OK");
+}
+
+void initDFPlayer() {
+  dfSerial.begin(9600, SERIAL_8N1, DFPLAYER_RX_PIN, DFPLAYER_TX_PIN);
   if (!player.begin(dfSerial)) {
-    Serial.println("❌ DFPlayer gagal start");
+    Serial.println("❌ DFPlayer init failed");
+    return;
+  }
+  player.volume(DFPLAYER_VOLUME);
+  Serial.println("✅ DFPlayer OK");
+}
+
+// ----- Callback & Handlers -----
+void onReceiveData(const esp_now_recv_info_t* info, const uint8_t* data, int len) {
+  char mac[18];
+  snprintf(mac, sizeof(mac),
+           "%02X:%02X:%02X:%02X:%02X:%02X",
+           info->src_addr[0], info->src_addr[1], info->src_addr[2],
+           info->src_addr[3], info->src_addr[4], info->src_addr[5]);
+  Serial.printf("📡 From: %s\n", mac);
+
+  if (len == sizeof(SensorData)) {
+    memcpy(&dataSensor, data, sizeof(dataSensor));
+    handleSensorData();
   } else {
-    Serial.println("✅ DFPlayer OK");
-    player.volume(25);
+    String msg;
+    msg.reserve(len);
+    for (int i = 0; i < len; i++) msg += char(data[i]);
+    msg.trim();
+    handleStringMessage(msg);
+  }
+}
+
+void handleSensorData() {
+  Serial.printf("🔍 Depan: %.2f cm | Kiri: %.2f cm | Kanan: %.2f cm\n",
+                dataSensor.depan, dataSensor.kiri, dataSensor.kanan);
+  if (dataSensor.bahaya) {
+    Serial.println("🚨 BAHAYA DETECTED!");
+    player.play(SOUND_ALERT);
+    delay(3000);
+  }
+}
+
+void handleStringMessage(const String& msg) {
+  Serial.printf("📩 Msg: %s\n", msg.c_str());
+  if (msg.equalsIgnoreCase("rusak")) {
+    Serial.println("🚨 Road damage!");
+    player.play(SOUND_ROAD_DAMAGE);
+    delay(3000);
+  } else if (msg.equalsIgnoreCase("keluarga")) {
+    Serial.println("👨‍👩‍👧 Family recognized!");
+    player.play(SOUND_FAMILY);
+    delay(3000);
   }
 }
 
