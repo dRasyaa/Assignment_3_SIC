@@ -2,21 +2,6 @@
 #include <WiFi.h>
 #include <HardwareSerial.h>
 #include <DFRobotDFPlayerMini.h>
-<<<<<<< Updated upstream
-#include <esp_wifi.h>
- 
-// Struct data dari pengirim (sensor jarak)
-typedef struct struct_message {
-  float depan;
-  float kiri;
-  float kanan;
-  bool bahaya; 
-} struct_message;
- 
-struct_message dataSensor;
- 
-// DFPlayer setup
-=======
 #include <HTTPClient.h>
 
 
@@ -45,7 +30,6 @@ struct SensorData {
 SensorData dataSensor;
 
 // ----- DFPlayer -----
->>>>>>> Stashed changes
 HardwareSerial dfSerial(1);
 #define RXD 17
 #define TXD 16
@@ -101,12 +85,6 @@ void onReceiveData(const esp_now_recv_info_t *recvInfo, const uint8_t *incomingD
  
 void setup() {
   Serial.begin(115200);
-<<<<<<< Updated upstream
-  Serial.println("ESP-NOW Receiver siap...");
-  WiFi.mode(WIFI_STA);  
- 
-  int wifi_channel = 6; 
-=======
   Serial.println("🔄 Starting...");
 
   initWiFi();
@@ -131,7 +109,6 @@ void loop() {
 // ----- Initializations -----
 void initWiFi() {
   WiFi.mode(WIFI_STA);
->>>>>>> Stashed changes
   esp_wifi_set_promiscuous(true);
   esp_wifi_set_channel(wifi_channel, WIFI_SECOND_CHAN_NONE);
   esp_wifi_set_promiscuous(false);
@@ -155,10 +132,6 @@ void initWiFi() {
     player.volume(25);
   }
 }
-<<<<<<< Updated upstream
- 
-void loop() {
-=======
 
 void sendEmergencyToServer() {
   if (WiFi.status() == WL_CONNECTED) {
@@ -178,5 +151,4 @@ void sendEmergencyToServer() {
   } else {
     Serial.println("❌ WiFi not connected!");
   }
->>>>>>> Stashed changes
 }
