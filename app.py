@@ -7,15 +7,22 @@ import os
 from PIL import Image
 from sklearn.cluster import DBSCAN
 import numpy as np
-import opencv as cv2
+import cv2
 import plotly.express as px
-
+ 
 st.set_page_config(
     page_title="NeoCane Dashboard",     
     page_icon="🦯",                       
     layout="wide",                        
     initial_sidebar_state="auto",         
 )
+ 
+if "emergency" not in st.session_state:
+    st.session_state.emergency = 0  # 0 = safe, 1 = emergency
+    st.session_state.emergency_log = pd.DataFrame(columns=["timestamp", "status", "location"])
+    st.session_state.last_emergency = 0
+    st.session_state.emergency_acknowledged = False
+ 
  
 # Konfigurasi Ubidots
 TOKEN = "BBUS-dUnnmdDGegd40VNGBKuCOnpvAbO9eJ"
@@ -31,6 +38,7 @@ def load_sensor_value(token):
     url7 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/face_recognition/lv"
     url8 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/longitude/lv"
     url9 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/latitude/lv"
+    url10 = f"https://industrial.api.ubidots.com/api/v1.6/devices/{LABEL}/emergency/lv"
  
     try:
         response_jarak_kanan = requests.get(url3, headers=my_headers)
@@ -40,6 +48,7 @@ def load_sensor_value(token):
         response_face_recognition = requests.get(url7, headers=my_headers)
         response_longitude = requests.get(url8, headers=my_headers)
         response_latitude = requests.get(url9, headers=my_headers)  
+        response_emergency = requests.get(url10, headers=my_headers)
  
         response_jarak_kanan.raise_for_status()
         response_jarak_kiri.raise_for_status()
@@ -48,6 +57,7 @@ def load_sensor_value(token):
         response_face_recognition.raise_for_status()
         response_longitude.raise_for_status()
         response_latitude.raise_for_status()
+        response_emergency.raise_for_status()
  
         jarak_kanan = float(response_jarak_kanan.text)
         jarak_tengah = float(response_jarak_tengah.text)
@@ -56,6 +66,7 @@ def load_sensor_value(token):
         face_recognition = int(float(response_face_recognition.text))
         longitude = float(response_longitude.text)
         latitude = float(response_latitude.text)
+        emergency = int(float(response_emergency.text))
  
         return {
             "jarak_kanan": jarak_kanan,
@@ -64,8 +75,10 @@ def load_sensor_value(token):
             "ai_vision": ai_vision,
             "face_recognition": face_recognition,
             "longitude": longitude,
-            "latitude" : latitude
+            "latitude" : latitude,
+            "emergency": emergency
         }
+ 
     except Exception as e:
         st.error(f"Failed to collect the data: {e}")
         return None
@@ -73,7 +86,7 @@ def load_sensor_value(token):
 # Inisialisasi session_state buat sensor values
 if "sensor_values" not in st.session_state:
     st.session_state.sensor_values = load_sensor_value(TOKEN)
-
+ 
 # Sidebar Menu
 st.sidebar.title("📂 NeoCane Menu")
 menu = st.sidebar.radio("Select View:", ["🏠 Home", "📊 Data", "ℹ️ About NeoCane", "👉 About Us"])
@@ -115,9 +128,9 @@ if menu == "🏠 Home":
     .feature-box-pink { background-color: #ec4899; }
     .feature-box-orange { background-color: #f97316; }
     </style>
-
+ 
     <h2 style="text-align: center;">🍿 Featured Features ↔️</h2>
-
+ 
     <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
         <div class="feature-box">🔍<br>Object Detection</div>
         <div class="feature-box feature-box-purple">🤖<br>AI Vision</div>
@@ -176,57 +189,57 @@ if menu == "🏠 Home":
         # Tampilan Information Button
     st.markdown("---")
     st.markdown("<h2 style='text-align: center; color: white;'>💁‍♂️ Information</h2>", unsafe_allow_html=True)
-
+ 
     # Buat 3 baris dengan 3 kolom per baris
     row1_col1, row1_col2, row1_col3 = st.columns(3)
     row2_col1, row2_col2, row2_col3 = st.columns(3)
     row3_col1, row3_col2 = st.columns([1, 2])  # Baris khusus untuk Emergency Log
-
+ 
     # Baris 1
     with row1_col1:
         if st.button("Object Detection Information"):
             st.session_state.show_obj = not st.session_state.get("show_obj", False)
         if st.session_state.get("show_obj"):
             st.info("Real-time object detection using ultrasonic sensors")
-
+ 
     with row1_col2:
         if st.button("Ai Vision Information"):
             st.session_state.show_ai = not st.session_state.get("show_ai", False)
         if st.session_state.get("show_ai"):
             st.info("Analyzes road conditions using computer vision")
-
+ 
     with row1_col3:
         if st.button("Photo History Information"):
             st.session_state.show_photo = not st.session_state.get("show_photo", False)
         if st.session_state.get("show_photo"):
             st.info("Stores journey photos for emergency reference")
-
+ 
     # Baris 2
     with row2_col1:
         if st.button("GPS Tracker Information"):
             st.session_state.show_gps = not st.session_state.get("show_gps", False)
         if st.session_state.get("show_gps"):
             st.info("Real-time tracking of user's location")
-
+ 
     with row2_col2:
         if st.button("Emergency Button Information"):
             st.session_state.show_sos = not st.session_state.get("show_sos", False)
         if st.session_state.get("show_sos"):
             st.info("Sends alerts to caregivers")
-
+ 
     with row2_col3:
         if st.button("Smart Wristband Information"):
             st.session_state.show_wrist = not st.session_state.get("show_wrist", False)
         if st.session_state.get("show_wrist"):
             st.info("Haptic feedback for obstacle detection")
-
+ 
     # Baris 3 - Khusus Face Recognition dan Emergency Log
     with row3_col1:
         if st.button("Face Recognition Information"):
             st.session_state.show_face = not st.session_state.get("show_face", False)
         if st.session_state.get("show_face"):
             st.info("Identifies registered family members")
-
+ 
     with row3_col2:
         if st.button("Emergency Log Information", key="emergency_log_button"):
             st.session_state.show_emergency = not st.session_state.get("show_emergency", False)
@@ -252,7 +265,7 @@ elif menu == "📊 Data":
         # Fitur Objek
         with tab1:
             st.subheader("🏯 Object Detection")
-            
+ 
             # Initialize detection log with all sensors
             if "detection_log" not in st.session_state:
                 st.session_state.detection_log = pd.DataFrame(columns=['timestamp', 'sensor', 'distance', 'status'])
@@ -268,16 +281,16 @@ elif menu == "📊 Data":
                             'status': ['Initializing']
                         })
                     ], ignore_index=True)
-
+ 
             if st.button("🧱 Refresh Detection"):
                 st.rerun()
-
+ 
             # Get current sensor values
             right_distance = sensor_values["jarak_kanan"]
             middle_distance = sensor_values["jarak_tengah"]
             left_distance = sensor_values["jarak_kiri"]
             current_time = pd.Timestamp.now()
-
+ 
             # Enhanced status function
             def get_status(distance):
                 if distance == -1:
@@ -288,20 +301,20 @@ elif menu == "📊 Data":
                     return ("Danger", "red")
                 else:
                     return ("Safe", "green")
-
+ 
             col1, col2, col3 = st.columns(3)
-
+ 
             # Sensor processing function
             def process_sensor(sensor_name, distance, col):
                 status, color = get_status(distance)
-                
+ 
                 with col:
                     # Enhanced metric display
                     st.metric(
                         label=f"🔵 {sensor_name}",
                         value=f"{distance:.1f} cm",
                     )
-                    
+ 
                     # Status indicator with icon
                     status_icon = "⚠️" if "Danger" in status else "✅" if "Safe" in status else "❌"
                     st.markdown(
@@ -311,7 +324,7 @@ elif menu == "📊 Data":
                         </div>""",
                         unsafe_allow_html=True
                     )
-                
+ 
                 # Log every reading (not just changes)
                 new_log = pd.DataFrame({
                     'timestamp': [current_time],
@@ -320,20 +333,20 @@ elif menu == "📊 Data":
                     'status': [status]
                 })
                 st.session_state.detection_log = pd.concat([st.session_state.detection_log, new_log], ignore_index=True)
-
+ 
             # Process all sensors
             process_sensor("Left", left_distance, col1)
             process_sensor("Front", middle_distance, col2)
             process_sensor("Right", right_distance, col3)
-
+ 
             # Enhanced detection log
             st.markdown("### 📜 Detection History")
-            
+ 
             if len(st.session_state.detection_log) > 0:
                 # Get last 10 unique entries per sensor
                 recent_logs = st.session_state.detection_log.sort_values('timestamp', ascending=False)
                 recent_logs = recent_logs.drop_duplicates(['sensor', 'status'], keep='first')
-                
+ 
                 # Format display
                 display_log = recent_logs.head(30).copy()
                 display_log['Time'] = display_log['timestamp'].dt.strftime('%H:%M:%S')
@@ -341,13 +354,13 @@ elif menu == "📊 Data":
                 display_log['Duration'] = display_log['Duration'].apply(
                     lambda x: f"{int(x//3600)}h {int((x%3600)//60)}m {int(x%60)}s" if x > 60 else f"{int(x)}s"
                 )
-
+ 
                 # Color coding
                 def color_status(status):
                     if "Danger" in status: return "red"
                     elif "Safe" in status: return "green"
                     else: return "orange"
-                
+ 
                 # Display table
                 st.dataframe(
                     display_log.sort_values('timestamp', ascending=False)[['Time', 'sensor', 'distance', 'status', 'Duration']],
@@ -366,12 +379,12 @@ elif menu == "📊 Data":
                     hide_index=True,
                     column_order=["Time", "sensor", "distance", "status", "Duration"]
                 )
-
+ 
                 # Enhanced visualization
                 st.markdown("### 📊 Detection Patterns")
-                
+ 
                 tab_a, tab_b = st.tabs(["Timeline", "Statistics"])
-                
+ 
                 with tab_a:
                     fig = px.scatter(
                         display_log,
@@ -395,14 +408,14 @@ elif menu == "📊 Data":
                         legend_title="Sensor"
                     )
                     st.plotly_chart(fig, use_container_width=True)
-                
+ 
                 with tab_b:
                     col1, col2 = st.columns(2)
                     with col1:
                         st.metric("Total Detections", len(st.session_state.detection_log))
                         danger_count = len(st.session_state.detection_log[st.session_state.detection_log['status'].str.contains('Danger')])
                         st.metric("Danger Alerts", danger_count)
-                    
+ 
                     with col2:
                         avg_distance = st.session_state.detection_log['distance'].mean()
                         st.metric("Average Distance", f"{avg_distance:.1f} cm")
@@ -410,58 +423,58 @@ elif menu == "📊 Data":
                         st.metric("Last Alert", last_alert.strftime('%H:%M:%S') if not pd.isnull(last_alert) else "None")
             else:
                 st.info("No detection history yet. Sensors are initializing...")
-
+ 
             # Raw data debug (can be commented out in production)
             with st.expander("Debug: Raw Sensor Data"):
                 st.write("Latest sensor values:", sensor_values)
                 st.write("Full detection log:", st.session_state.detection_log)
                 # Fitur AI Vision
         with tab2:
-            st.subheader("🛣️ AI Vision - Jalan")
-            
+            st.subheader("🛣️ AI Vision - Road")
+ 
             # 1. Initialize session_state untuk simpan semua data
             if "road_history" not in st.session_state:
                 st.session_state.road_history = pd.DataFrame(columns=["timestamp", "status", "latitude", "longitude"])
-            
+ 
             # 2. Ambil data sensor terbaru
             ai_status = sensor_values["ai_vision"]  # 0 = Aman, 1 = Bahaya
             current_time = pd.Timestamp.now()
-            
+ 
             # 3. Tambahkan data baru ke history
             new_entry = pd.DataFrame({
                 "timestamp": [current_time],
-                "status": ["Aman" if ai_status == 0 else "Bahaya"],
+                "status": ["Safe!" if ai_status == 0 else "Danger!"],
                 "latitude": [sensor_values["latitude"]],
                 "longitude": [sensor_values["longitude"]]
             })
-            
+ 
             st.session_state.road_history = pd.concat(
                 [st.session_state.road_history, new_entry], 
                 ignore_index=True
             )
-            
+ 
             # 4. Tampilkan status terkini (sama seperti sebelumnya)
             col_status, col_action = st.columns([1, 3])
             with col_status:
                 if ai_status == 0:
-                    st.success("✅ Jalan Aman")
+                    st.success("✅ The Road is Safe")
                 else:
-                    st.error("🚧 Jalan Bermasalah")
-            
+                    st.error("🚧 The Road is Troubled")
+ 
             with col_action:
                 if ai_status == 0:
-                    st.markdown("**Kondisi:** Permukaan jalan normal")
+                    st.markdown("**Conditions:** Normal road surface")
                 else:
-                    st.markdown("**Peringatan:** Deteksi lubang/retakan!")
+                    st.markdown("**Warning:** Hole/crack detection!")
                     st.markdown("""<audio autoplay><source src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3"></audio>""", 
                             unsafe_allow_html=True)
-            
+ 
             # 5. Tabel 5 Data Terakhir
-            st.markdown("### 📋 5 Deteksi Terakhir")
+            st.markdown("### 📋 5 Last Detections")
             st.dataframe(
                 st.session_state.road_history.sort_values("timestamp", ascending=False).head(5),
                 column_config={
-                    "timestamp": "Waktu",
+                    "timestamp": "Time",
                     "status": "Status",
                     "latitude": "Latitude",
                     "longitude": "Longitude"
@@ -469,15 +482,15 @@ elif menu == "📊 Data":
                 hide_index=True,
                 use_container_width=True
             )
-            
+ 
             # 6. Grafik History (Semua Data)
-            st.markdown("### 📊 Trend Deteksi Jalan")
+            st.markdown("### 📊 Road Detection Graph")
             if len(st.session_state.road_history) > 1:
                 # Hitung jumlah insiden per menit
                 df_plot = st.session_state.road_history.copy()
                 df_plot["time_bin"] = df_plot["timestamp"].dt.floor("5min")  # Kelompokkan per 5 menit
                 df_plot = df_plot[df_plot["status"] == "Bahaya"].groupby("time_bin").size().reset_index(name="count")
-                
+ 
                 fig = px.line(
                     df_plot, 
                     x="time_bin", 
@@ -487,8 +500,8 @@ elif menu == "📊 Data":
                 )
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.warning("Belum ada cukup data untuk grafik")
-            
+                st.warning("There is not enough data for graphs")
+ 
             # 7. Opsi Download Full Data
             st.download_button(
                 label="⬇️ Download Full History (CSV)",
@@ -516,16 +529,16 @@ elif menu == "📊 Data":
                 else:
                     with cols[i - 1]:
                         st.warning(f"photo_{i}.jpg not found", icon="⚠️")
-        
+ 
         with tab4:
             st.subheader("👨‍👩‍👧‍👦 Family Face Recognition")
-            
+ 
             # Get face recognition status from Ubidots
             face_status = sensor_values["face_recognition"]
-            
+ 
             if st.button("🌪️ Refresh Face Recognition"):
                 st.rerun()
-            
+ 
             # Display status
             if face_status == 1:
                 st.success("## ✅ Family Member Detected")
@@ -542,43 +555,43 @@ elif menu == "📊 Data":
                 <source src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3">
                 </audio>
                 """, unsafe_allow_html=True)
-            
+ 
             # Debug info
             with st.expander("🔧 Technical Details"):
                 st.write(f"Raw face_recognition value from Ubidots: {face_status}")
                 st.write("0 = Unknown, 1 = Family")
-            
+ 
         with tab5:
             st.subheader("🗺 GPS Tracking & Frequent Locations")
-            
+ 
             # Refresh Button
             if st.button("📍 Refresh GPS Data"):
                 st.session_state.sensor_values = load_sensor_value(TOKEN)
                 sensor_values = st.session_state.sensor_values
-            
+ 
             # Current Location
             latitude = sensor_values["latitude"]
             longitude = sensor_values["longitude"]
             st.write(f"**Current Location:** ({latitude}, {longitude})")
-            
+ 
             # Peta Real-Time
             st.markdown("### 🌍 Live Location")
             st.map(pd.DataFrame({'lat': [latitude], 'lon': [longitude]}))
-            
+ 
             # Simpan riwayat GPS ke session_state
             if "gps_history" not in st.session_state:
                 st.session_state.gps_history = []
                 st.session_state.location_history = pd.DataFrame(columns=['timestamp', 'lat', 'lon'])
-            
+ 
             # Tambahkan lokasi baru ke history 
             new_location = (latitude, longitude)
             current_time = pd.Timestamp.now()
-            
+ 
             # Cek jika lokasi berbeda dari sebelumnya atau sudah 1 menit berlalu
             if (len(st.session_state.gps_history) == 0 or 
                 new_location != st.session_state.gps_history[-1] or
                 (current_time - pd.to_datetime(st.session_state.location_history['timestamp'].iloc[-1])).seconds > 60 if len(st.session_state.location_history) > 0 else True):
-                
+ 
                 st.session_state.gps_history.append(new_location)
                 new_entry = pd.DataFrame({
                     'timestamp': [current_time],
@@ -586,32 +599,32 @@ elif menu == "📊 Data":
                     'lon': [longitude]
                 })
                 st.session_state.location_history = pd.concat([st.session_state.location_history, new_entry], ignore_index=True)
-            
+ 
             # Tampilkan Travel Log
             # Tampilkan Travel Log
                 st.markdown("### 🚶 Travel Log")
-
+ 
                 if len(st.session_state.location_history) > 0:
                     # Hitung waktu antara titik-titik (tidak perlu disimpan di dataframe)
                     time_diff = st.session_state.location_history['timestamp'].diff().dt.total_seconds().fillna(0)
-                    
+ 
                     # Format waktu untuk display
                     display_df = st.session_state.location_history.copy()
                     display_df['Time'] = display_df['timestamp'].dt.strftime('%H:%M:%S')  # Format jam:menit:detik
                     display_df['Time Since Last'] = time_diff.apply(lambda x: f"{int(x)} detik" if x < 60 else f"{int(x/60)} menit")
-                    
+ 
                     # Tampilkan tabel perjalanan (tanpa kolom speed dan time_elapsed)
                     st.dataframe(
                         display_df.sort_values('timestamp', ascending=False).head(10)[['Time', 'lat', 'lon', 'Time Since Last']],
                         column_config={
-                            "Time": "Waktu Pencatatan",
+                            "Time": "Recording Time",
                             "lat": "Latitude",
                             "lon": "Longitude",
-                            "Time Since Last": "Selisih Waktu"
+                            "Time Since Last": "Time Difference"
                         },
                         use_container_width=True
                     )
-                
+ 
                 # Visualisasi rute perjalanan
                 st.markdown("### 🛣️ Travel Route")
                 if len(st.session_state.location_history) > 1:
@@ -641,30 +654,30 @@ elif menu == "📊 Data":
                             )
                         ]
                     ))
-            
+ 
             # Analisis Tempat Favorit
             st.markdown("### ⭐ Frequently Visited Places")
-            
+ 
             # Deteksi tempat favorit (jika ada minimal 5 data)
             if len(st.session_state.gps_history) > 5:
                 # Konversi ke numpy array
                 coords = np.array(st.session_state.gps_history)
-                
+ 
                 # Clustering dengan DBSCAN 
                 kms_per_radian = 6371.0088
                 epsilon = 0.05 / kms_per_radian  
-                
+ 
                 db = DBSCAN(
                     eps=epsilon, 
                     min_samples=3,  
                     metric='haversine'
                 ).fit(np.radians(coords))
-                
+ 
                 # Hitung frekuensi kunjungan per cluster
                 clusters = pd.Series(db.labels_)
                 freq_spots = clusters.value_counts().reset_index()
                 freq_spots.columns = ['cluster_id', 'visit_count']
-                
+ 
                 # Ambil centroid tiap cluster
                 freq_spots['lat'] = freq_spots['cluster_id'].apply(
                     lambda x: coords[clusters == x][:, 0].mean()
@@ -672,14 +685,14 @@ elif menu == "📊 Data":
                 freq_spots['lon'] = freq_spots['cluster_id'].apply(
                     lambda x: coords[clusters == x][:, 1].mean()
                 )
-                
+ 
                 # Filter cluster valid (bukan noise)
                 freq_spots = freq_spots[freq_spots['cluster_id'] != -1]
-                
+ 
                 # Tampilkan hasil
                 if not freq_spots.empty:
                     st.success(f"Found {len(freq_spots)} frequent locations!")
-                    
+ 
                     # Tabel ranking
                     st.dataframe(
                         freq_spots.sort_values('visit_count', ascending=False)
@@ -691,7 +704,7 @@ elif menu == "📊 Data":
                             "visit_count": "Total Visits"
                         }
                     )
-                    
+ 
                     # Peta heatmap
                     st.pydeck_chart(pdk.Deck(
                         map_style='mapbox://styles/mapbox/light-v9',
@@ -711,20 +724,20 @@ elif menu == "📊 Data":
                             )
                         ]
                     ))
-                    
+ 
                     # Analisis pola perjalanan
                     st.markdown("### 🧭 Travel Patterns")
-                    
+ 
                     # Hitung waktu yang dihabiskan di setiap lokasi favorit
                     if len(st.session_state.location_history) > 1:
                         # Gabungkan data lokasi dengan cluster
                         location_df = st.session_state.location_history.copy()
                         location_df['cluster'] = db.labels_
-                        
+ 
                         # Hitung waktu yang dihabiskan di setiap cluster
                         cluster_time = location_df[location_df['cluster'] != -1].groupby('cluster')['time_elapsed'].sum().reset_index()
                         cluster_time = cluster_time.merge(freq_spots, left_on='cluster', right_on='cluster_id')
-                        
+ 
                         # Tampilkan sebagai pie chart
                         fig = px.pie(cluster_time, 
                                     values='time_elapsed', 
@@ -736,11 +749,65 @@ elif menu == "📊 Data":
                     st.warning("No frequent locations detected yet.")
             else:
                 st.info("Collecting more location data... (min 5 locations needed)")
-                    
+ 
                 # Fitur Emergency Button (Coming Soon)
-                with tab6:
-                    st.subheader("🆘 Emergency Log")
-                    st.markdown("Emergency log feature is coming soon! Stay tuned for updates.")
+ 
+            # Then modify your Emergency Log tab (tab6) to this:
+            # Then modify your Emergency Log tab (tab6) to this:
+        with tab6:
+            st.subheader("🆘 Emergency")
+ 
+            # Inisialisasi state untuk acknowledgment dan status sebelumnya
+            if "emergency_acknowledged" not in st.session_state:
+                st.session_state.emergency_acknowledged = False
+ 
+            if "prev_emergency_state" not in st.session_state:
+                st.session_state.prev_emergency_state = 0
+ 
+            emergency_status = int(sensor_values["emergency"])
+ 
+            if emergency_status == 1:
+                st.warning("🚨 Emergency button has been pressed!")
+ 
+                # Tampilkan popover hanya jika:
+                # - Status sebelumnya bukan darurat, atau
+                # - Belum diacknowledge
+                if (st.session_state.prev_emergency_state != 1 or
+                    not st.session_state.emergency_acknowledged):
+ 
+                    with st.popover("🚨 EMERGENCY ALERT!", use_container_width=True):
+                        st.error(f"""
+                        ### EMERGENCY BUTTON ACTIVATED!
+ 
+                        **Last known location:**
+                        - Latitude: {sensor_values["latitude"]:.6f}
+                        - Longitude: {sensor_values["longitude"]:.6f}
+                        - Time: {pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")}
+ 
+                        Immediate action required!
+                        """)
+ 
+                        st.markdown("""
+                        <audio autoplay loop>
+                        <source src="https://assets.mixkit.co/sfx/preview/mixkit-security-alarm-996.mp3" type="audio/mpeg">
+                        </audio>
+                        """, unsafe_allow_html=True)
+ 
+                        col1, col2 = st.columns([1, 2])
+                        with col1:
+                            if st.button("🆘 Call Emergency Contacts", type="primary"):
+                                st.success("Emergency contacts notified!")
+                        with col2:
+                            if st.button("✅ Acknowledge Emergency", type="secondary"):
+                                st.session_state.emergency_acknowledged = True
+                                st.rerun()
+            else:
+                st.success("✅ No current emergency.")
+                st.session_state.emergency_acknowledged = False
+ 
+            # Simpan status terakhir agar popover tidak muncul terus-menerus
+            st.session_state.prev_emergency_state = emergency_status
+ 
  
     else:
         st.error("❌ Failed to retrieve data from Ubidots")

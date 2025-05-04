@@ -29,7 +29,7 @@ output_details = interpreter.get_output_details()
 # Ukuran input model
 target_size = input_details[0]['shape'][1:3]  # e.g. (128, 128)
 
-# Fungsi kirim ke Ubidots
+# Fungsi kirim ke Ubidots Jalan Rusak
 def send_to_ubidots(status):
     token = "BBUS-dUnnmdDGegd40VNGBKuCOnpvAbO9eJ"
     device = "neocane-dashboard"
@@ -45,6 +45,53 @@ def send_to_ubidots(status):
         print(f"✅ Data status '{status}' dikirim ke Ubidots: {response.status_code}")
     except Exception as e:
         print(f"❌ Gagal kirim ke Ubidots: {e}")
+
+# Fungsi kirim ke Ubidots emergency
+def send_emergency_to_ubidots():
+    token = "BBUS-dUnnmdDGegd40VNGBKuCOnpvAbO9eJ"  # GANTI KALO PERLU
+    device = "neocane-dashboard"
+    variable = "emergency"
+
+    url = f"https://industrial.api.ubidots.com/api/v1.6/devices/{device}/"
+    headers = {
+        "X-Auth-Token": token,
+        "Content-Type": "application/json"
+    }
+    payload = {
+        variable: 1  
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        print(f"✅ Emergency dikirim ke Ubidots: {response.status_code}")
+    except Exception as e:
+        print(f"❌ Gagal kirim emergency ke Ubidots: {e}")
+
+# Fungsi untuk mengirim data ke Ubidots
+def send_distance_to_ubidots(lat, lon, front, left, right):
+    token = "BBUS-dUnnmdDGegd40VNGBKuCOnpvAbO9eJ"  # GANTI kalau perlu
+    device = "neocane-dashboard"
+    url = f"https://industrial.api.ubidots.com/api/v1.6/devices/{device}/"
+
+    headers = {
+        "X-Auth-Token": token,
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "latitude": lat,
+        "longitude": lon,
+        "jarak_tengah": front,
+        "jarak_kiri": left,
+        "jarak_kanan": right
+    }
+
+    try:
+        res = requests.post(url, headers=headers, json=payload)
+        print(f"✅ Data GPS + Sensor dikirim ke Ubidots: {res.status_code}")
+    except Exception as e:
+        print(f"❌ Gagal kirim ke Ubidots: {e}")
+
 
 # Fungsi preprocessing gambar
 def preprocess_image(img_base64):
@@ -76,26 +123,6 @@ def predict():
         send_to_ubidots(status) 
 
         return jsonify({"status": status})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    
-@app.route('/distance', methods=['POST'])
-def receive_distance():
-    try:
-        data = request.get_json()
-        distance_front = data.get('front')
-        distance_left = data.get('left')
-        distance_right = data.get('right')
-
-        latest_status["distance"] = {
-            "front": distance_front,
-            "left": distance_left,
-            "right": distance_right
-        }
-        latest_status["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        return jsonify({"message": "Objek Terdeteksi", "data": latest_status["distance"]})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -138,8 +165,28 @@ def handle_emergency():
     if data.get("emergency"):
         latest_emergency["triggered"] = True
         print("🚨 Emergency button ditekan!")
+
+        send_emergency_to_ubidots()
+        
         return jsonify({"status": "received"})
     return jsonify({"error": "Invalid data"}), 400
 
+
+@app.route("/distance", methods=["POST"])
+def receive_data():
+    data = request.get_json()
+    print("[Flask] Diterima:", data)
+ 
+    # Ambil data GPS dan sensor
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
+    front = data.get("front")
+    left = data.get("left")
+    right = data.get("right")
+    
+    send_distance_to_ubidots(latitude, longitude, front, left, right)
+
+    return jsonify({"message": "Data received and sent to Ubidots"}), 200
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5500)
+    app.run(host='0.0.0.0', port=5500)  
