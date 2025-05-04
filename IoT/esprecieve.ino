@@ -3,16 +3,24 @@
 #include <WiFi.h>
 #include <HardwareSerial.h>
 #include <DFRobotDFPlayerMini.h>
+#include <HTTPClient.h>
+
 
 // ----- Config -----
 constexpr int WIFI_CHANNEL          = 6;
 constexpr uint8_t DFPLAYER_RX_PIN   = 16;
 constexpr uint8_t DFPLAYER_TX_PIN   = 17;
 constexpr uint8_t DFPLAYER_VOLUME   = 25;
+constexpr uint8_t BUTTON_PIN = 4;
 
 constexpr uint8_t SOUND_ALERT       = 3;
 constexpr uint8_t SOUND_ROAD_DAMAGE = 2;
 constexpr uint8_t SOUND_FAMILY      = 4;
+
+const char*EMERGENCY_URL = "http://192.168.155.11:5500/emergency";
+
+unsigned long lastButtonCheck = 0;
+const unsigned long BUTTON_CHECK_INTERVAL = 5000;
 
 // ----- Data Struct -----
 struct SensorData {
@@ -42,12 +50,20 @@ void setup() {
   initWiFi();
   initESPNOW();
   initDFPlayer();
+  pinMode(BUTTON_PIN, INPUT_PULLUP); 
 
   Serial.println("🚀 System Ready!");
 }
 
 void loop() {
-  // All handled in callback
+  unsigned long now = millis(); 
+  if (now - lastButtonCheck >= BUTTON_CHECK_INTERVAL) {
+    lastButtonCheck = now;
+    if (digitalRead(BUTTON_PIN) == LOW) {
+      Serial.println("🆘 Emergency button pressed!");
+      sendEmergencyToServer();
+    }
+  }
 }
 
 // ----- Initializations -----
@@ -120,5 +136,25 @@ void handleStringMessage(const String& msg) {
     Serial.println("👨‍👩‍👧 Family recognized!");
     player.play(SOUND_FAMILY);
     delay(3000);
+  }
+}
+
+void sendEmergencyToServer() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(EMERGENCY_URL);
+    http.addHeader("Content-Type", "application/json");
+    
+    String json = "{\"emergency\": true}";
+    int resCode = http.POST(json);
+
+    if (resCode > 0) {
+      Serial.printf("✅ Emergency sent! Code: %d\n", resCode);
+    } else {
+      Serial.printf("❌ Failed to send emergency! Code: %d\n", resCode);
+    }
+    http.end();
+  } else {
+    Serial.println("❌ WiFi not connected!");
   }
 }
