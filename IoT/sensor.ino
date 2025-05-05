@@ -20,7 +20,6 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 const char* ssid = "Balai Diklat 2025";
 const char* password = "denivorasya";
 const char* serverURL = "http://172.16.1.71:5500/distance"; // Server Flask URL
-const char* openCageApiKey = "ISI_API_KEY_OPENCAGE_KAMU"; // <-- Ganti API key kamu
 String lastLocationName = "Unknown";
 
 // ESP-NOW
@@ -36,6 +35,13 @@ typedef struct struct_message {
 
 struct_message dataSensor;
 
+// Struktur tambahan untuk notifikasi
+typedef struct {
+  char pesan[20];
+} struct_notif;
+
+struct_notif notif;
+
 // Control Flag
 bool sensorAktif = true;
 
@@ -45,7 +51,7 @@ const unsigned long sendInterval = 2000;
 unsigned long lastControlCheck = 0;
 const unsigned long controlCheckInterval = 2000;
 unsigned long lastSensorRead = 0;
-unsigned long sensorInterval = 1000;
+const unsigned long sensorInterval = 1000;
 
 // Jarak Sensor
 float depan = -1, kiri = -1, kanan = -1;
@@ -55,9 +61,8 @@ bool sedangBerjalan = false;
 unsigned long mulaiJalanMillis = 0;
 unsigned long waktuBerjalan = 0; // dalam ms
 unsigned long waktuBerhentiMillis = 0;
-double lastLat = 0.0;
-double lastLon = 0.0;
 bool timerPaused = false;
+bool notifikasiTerkirim = false;
 
 // GPS
 TinyGPSPlus gps;
@@ -247,17 +252,6 @@ void updateLocationName(double latitude, double longitude) {
   }
 }
 
-double haversine(double lat1, double lon1, double lat2, double lon2) {
-  const double R = 6371000; // Radius bumi dalam meter
-  double dLat = radians(lat2 - lat1);
-  double dLon = radians(lon2 - lon1);
-  double a = sin(dLat / 2) * sin(dLat / 2) +
-             cos(radians(lat1)) * cos(radians(lat2)) *
-             sin(dLon / 2) * sin(dLon / 2);
-  double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-  return R * c;
-}
-
 // -------------------------
 // Loop
 void loop() {
@@ -273,6 +267,9 @@ void loop() {
     if (!gpsConnected) {
       Serial.println("GPS terkoneksi! 🚀");
       gpsConnected = true;
+
+      // Mulai hitung waktu berjalan ketika GPS aktif
+      mulaiJalanMillis = now;
     }
 
     Serial.println("=== Data GPS ===");
@@ -340,12 +337,19 @@ void loop() {
     }
   }
 
-  // Jika terlalu lama diam, pause timer
+  // Menghitung waktu berjalan
   if (sedangBerjalan && !timerPaused) {
     if (now - mulaiJalanMillis >= 5000) {
       timerPaused = true;
       waktuBerjalan = now - mulaiJalanMillis;
       Serial.print("Timer jalan: "); Serial.println(waktuBerjalan);
+
+      if (waktuBerjalan >= 2700000 && !notifikasiTerkirim) {
+        strcpy(notif.pesan, "lama");
+        esp_now_send(receiverAddress, (uint8_t *)&notif, sizeof(notif));
+        Serial.println("[ESP-NOW] Notifikasi 'lama' dikirim!");
+        notifikasiTerkirim = true;
+      }
     }
   }
 }
