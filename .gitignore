@@ -1,4 +1,5 @@
-saved_photos/
 deepface_env/
 dlib/
-/saved_photos
+saved_photos/
+temp.jpg
+*.pkl
