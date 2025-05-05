@@ -95,7 +95,7 @@ menu = st.sidebar.radio("Select View:", ["🏠 Home", "📊 Data", "ℹ️ About
 if menu == "🏠 Home":
  
     # Tampilan Header
-    st.markdown("<h1 style='text-align: center; color: white;'>Welcome to NeoCane 👋</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>Welcome to NeoCane 👋</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; font-size: 20px; font-style: italic; color: #ccc;'>An AI & IoT-Based Smart Cane for the Visually Impaired</p>", unsafe_allow_html=True)
  
     # Tampilan Featured Features
@@ -143,7 +143,7 @@ if menu == "🏠 Home":
  
     # Tampilan Additional Tools
     st.markdown("---")
-    st.markdown("<h2 style='text-align: center; color: white;'>🛠️ Additional Tools</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>🛠️ Additional Tools</h2>", unsafe_allow_html=True)
  
     colA, colB = st.columns(2)
  
@@ -188,7 +188,7 @@ if menu == "🏠 Home":
     # Tampilan Information Button
         # Tampilan Information Button
     st.markdown("---")
-    st.markdown("<h2 style='text-align: center; color: white;'>💁‍♂️ Information</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; '>💁‍♂️ Information</h2>", unsafe_allow_html=True)
  
     # Buat 3 baris dengan 3 kolom per baris
     row1_col1, row1_col2, row1_col3 = st.columns(3)
@@ -829,7 +829,7 @@ elif menu == "ℹ️ About NeoCane":
     """)
  
     # Quotes
-    st.markdown("<p style= 'text-align: center; font-weight: bold; color: white;'>Because the best help doesn't just come from the a smart device, it comes from one that cares </p>", unsafe_allow_html=True)
+    st.markdown("<p style= 'text-align: center; font-weight: bold; '>Because the best help doesn't just come from the a smart device, it comes from one that cares </p>", unsafe_allow_html=True)
     st.markdown("<p style= 'text-align: center;'>-Semen 1 Roda</p>", unsafe_allow_html=True)
  
 # About Us Page
