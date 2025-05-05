@@ -7,7 +7,7 @@ import os
 from PIL import Image
 from sklearn.cluster import DBSCAN
 import numpy as np
-import opencv as cv2
+import cv2
 import plotly.express as px
  
 st.set_page_config(
