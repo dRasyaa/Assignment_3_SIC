@@ -7,7 +7,7 @@ import os
 from PIL import Image
 from sklearn.cluster import DBSCAN
 import numpy as np
-import cv2
+import opencv as cv2
 import plotly.express as px
  
 st.set_page_config(
@@ -757,60 +757,58 @@ elif menu == "📊 Data":
         with tab6:
             st.subheader("🆘 Emergency")
  
-            # Inisialisasi state untuk acknowledgment dan status sebelumnya
+            # Inisialisasi state
             if "emergency_acknowledged" not in st.session_state:
                 st.session_state.emergency_acknowledged = False
- 
+            if "emergency_processed" not in st.session_state:
+                st.session_state.emergency_processed = False
             if "prev_emergency_state" not in st.session_state:
                 st.session_state.prev_emergency_state = 0
  
             emergency_status = int(sensor_values["emergency"])
  
-            if emergency_status == 1:
-                st.warning("🚨 Emergency button has been pressed!")
- 
-                # Tampilkan popover hanya jika:
-                # - Status sebelumnya bukan darurat, atau
-                # - Belum diacknowledge
-                if (st.session_state.prev_emergency_state != 1 or
-                    not st.session_state.emergency_acknowledged):
- 
-                    with st.popover("🚨 EMERGENCY ALERT!", use_container_width=True):
-                        st.error(f"""
-                        ### EMERGENCY BUTTON ACTIVATED!
- 
-                        **Last known location:**
-                        - Latitude: {sensor_values["latitude"]:.6f}
-                        - Longitude: {sensor_values["longitude"]:.6f}
-                        - Time: {pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")}
- 
-                        Immediate action required!
-                        """)
- 
-                        st.markdown("""
-                        <audio autoplay loop>
-                        <source src="https://assets.mixkit.co/sfx/preview/mixkit-security-alarm-996.mp3" type="audio/mpeg">
-                        </audio>
-                        """, unsafe_allow_html=True)
- 
-                        col1, col2 = st.columns([1, 2])
-                        with col1:
-                            if st.button("🆘 Call Emergency Contacts", type="primary"):
-                                st.success("Emergency contacts notified!")
-                        with col2:
-                            if st.button("✅ Acknowledge Emergency", type="secondary"):
-                                st.session_state.emergency_acknowledged = True
-                                st.rerun()
-            else:
-                st.success("✅ No current emergency.")
+            # RESET STATE jika emergency sudah nonaktif
+            if emergency_status == 0:
                 st.session_state.emergency_acknowledged = False
+                st.session_state.emergency_processed = False
+                st.success("✅ No current emergency.")
+            else:
+                if not st.session_state.emergency_acknowledged:
+                    st.warning("🚨 Emergency button has been pressed!")
  
-            # Simpan status terakhir agar popover tidak muncul terus-menerus
+                    if (st.session_state.prev_emergency_state != 1 or not st.session_state.emergency_processed):
+                        with st.popover("🚨 EMERGENCY ALERT!", use_container_width=True):
+                            st.error(f"""
+                            ### EMERGENCY BUTTON ACTIVATED!
+ 
+                            **Last known location:**
+                            - Latitude: {sensor_values["latitude"]:.6f}
+                            - Longitude: {sensor_values["longitude"]:.6f}
+                            - Time: {pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")}
+ 
+                            Immediate action required!
+                            """)
+ 
+                            st.markdown("""
+                            <audio autoplay loop>
+                            <source src="https://assets.mixkit.co/sfx/preview/mixkit-security-alarm-996.mp3" type="audio/mpeg">
+                            </audio>
+                            """, unsafe_allow_html=True)
+ 
+                            col1, col2 = st.columns([1, 2])
+                            with col1:
+                                if st.button("🆘 Call Emergency Contacts", type="primary"):
+                                    st.success("Emergency contacts notified!")
+                            with col2:
+                                if st.button("✅ Acknowledge Emergency", type="secondary"):
+                                    st.session_state.emergency_acknowledged = True
+                                    st.session_state.emergency_processed = True
+                                    st.rerun()
+                else:
+                    st.success("✅ Emergency has been processed.")
+ 
             st.session_state.prev_emergency_state = emergency_status
  
- 
-    else:
-        st.error("❌ Failed to retrieve data from Ubidots")
  
 # About Neocane Page
 elif menu == "ℹ️ About NeoCane":

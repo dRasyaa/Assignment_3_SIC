@@ -3,6 +3,7 @@ from deepface import DeepFace
 import base64
 import numpy as np
 import cv2
+import os
 
 app = Flask(__name__)
 
@@ -22,7 +23,10 @@ def face_recognition_api():
         cv2.imwrite("temp.jpg", img)
 
         # Cek match terhadap folder faces/
-        result = DeepFace.find(img_path="temp.jpg", db_path="faces", enforce_detection=False)
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        db_path = os.path.join(BASE_DIR, "Data_Photo")
+
+        result = DeepFace.find(img_path="temp.jpg", db_path=db_path, enforce_detection=False)
 
         if result and len(result[0]) > 0:
             best_match = result[0].iloc[0]
@@ -35,4 +39,4 @@ def face_recognition_api():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5500)
+    app.run(host="0.0.0.0", port=5510)
